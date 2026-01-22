@@ -7,7 +7,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
     <style>
         :root {
             --sidebar-width: 72px;
@@ -39,27 +38,20 @@
         }
 
         /* background */
-        #lottie-bg {
+        #bg-video {
             position: fixed;
             top: 0;
             left: var(--sidebar-width);
             z-index: 0;
-            /* render at lower res for better performance */
-            width: calc((100vw - var(--sidebar-width)) * 0.35);
-            height: calc(100vh * 0.35);
-            transform: scale(3);
-            transform-origin: top left;
+            width: calc(100vw - var(--sidebar-width));
+            height: 100vh;
+            object-fit: cover;
+            object-position: center;
             /* gpu acceleration */
-            will-change: transform;
+            will-change: transform, opacity;
             contain: layout paint size;
             /* subtle opacity helps mask lower quality */
             opacity: 0.85;
-        }
-
-        #lottie-bg canvas {
-            width: 100% !important;
-            height: 100% !important;
-            image-rendering: auto;
         }
 
         /* sidebar */
@@ -340,7 +332,17 @@
     </aside>
 
     <!-- background -->
-    <div id="lottie-bg"></div>
+    <video
+        id="bg-video"
+        autoplay
+        muted
+        loop
+        playsinline
+        preload="auto"
+        aria-hidden="true"
+    >
+        <source src="landingdemo-lg-v1.mp4" type="video/mp4">
+    </video>
 
     <!-- corners -->
     <div class="corner-frame top-left">
@@ -375,99 +377,6 @@
     </main>
 
     <script>
-        // performance settings - adjust if still laggy:
-        // - lower PLAYBACK_SPEED (try 0.2 or 0.15)
-        // - lower TARGET_FPS (try 8 or 10)
-        // - in css, change scale(3) to scale(4) and reduce width/height proportionally
-        const PLAYBACK_SPEED = 0.25; // 0.1-1.0 (lower = slower = less lag)
-        const TARGET_FPS = 10;       // 6-20 (lower = less lag, choppier)
-        const MAX_DPR = 1;           // caps canvas resolution
-        
-        // init animation
-        const animation = lottie.loadAnimation({
-            container: document.getElementById('lottie-bg'),
-            renderer: 'canvas',
-            loop: false,
-            autoplay: false,
-            path: 'landingdemo-1_22-v1.json',
-            rendererSettings: {
-                progressiveLoad: true,
-                preserveAspectRatio: 'xMidYMid slice',
-                clearCanvas: true,
-                context: null,
-                hideOnTransparent: true,
-                className: 'lottie-canvas',
-                dpr: MAX_DPR
-            }
-        });
-
-        // aggressive performance optimizations
-        animation.setSubframe(false);
-        animation.setSpeed(PLAYBACK_SPEED);
-        
-        // manual frame limiter (avoids Lottie internal rAF doing full-rate renders)
-        let lastTick = 0;
-        let currentFrame = 0;
-        let rafId = null;
-        const minFrameDelay = 1000 / TARGET_FPS;
-        let isVisible = true;
-
-        const startManualLoop = () => {
-            if (rafId) {
-                return;
-            }
-            const baseFps = animation.frameRate || 30;
-            const tick = (ts) => {
-                if (!isVisible) {
-                    rafId = requestAnimationFrame(tick);
-                    return;
-                }
-                if (!lastTick) {
-                    lastTick = ts;
-                }
-                const delta = ts - lastTick;
-                if (delta >= minFrameDelay) {
-                    const advance = (delta / 1000) * baseFps * PLAYBACK_SPEED;
-                    currentFrame = (currentFrame + advance) % animation.totalFrames;
-                    animation.goToAndStop(currentFrame, true);
-                    lastTick = ts;
-                }
-                rafId = requestAnimationFrame(tick);
-            };
-            rafId = requestAnimationFrame(tick);
-        };
-
-        // loading
-        animation.addEventListener('DOMLoaded', () => {
-            animation.goToAndStop(0, true);
-            if (animation.renderer && typeof animation.renderer.setQuality === 'function') {
-                animation.renderer.setQuality('low');
-            }
-            startManualLoop();
-        });
-
-        animation.addEventListener('error', (e) => {
-            console.error('animation error:', e);
-        });
-
-        // parallax disabled
-
-        // pause when hidden
-        document.addEventListener('visibilitychange', () => {
-            isVisible = !document.hidden;
-            if (document.hidden) {
-                animation.pause();
-                if (rafId) {
-                    cancelAnimationFrame(rafId);
-                    rafId = null;
-                }
-            } else {
-                animation.play();
-                lastTick = 0;
-                startManualLoop();
-            }
-        });
-
         // nav clicks
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', function() {
