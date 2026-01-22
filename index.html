@@ -43,18 +43,22 @@
             position: fixed;
             top: 0;
             left: var(--sidebar-width);
-            right: 0;
-            bottom: 0;
             z-index: 0;
+            /* render at 50% size for better performance */
+            width: calc((100vw - var(--sidebar-width)) * 0.5);
+            height: calc(100vh * 0.5);
+            transform: scale(2);
+            transform-origin: top left;
             /* gpu acceleration */
-            transform: translateZ(0);
-            will-change: contents;
+            will-change: transform;
+            /* subtle opacity helps mask lower quality */
+            opacity: 0.85;
         }
 
         #lottie-bg canvas {
             width: 100% !important;
             height: 100% !important;
-            image-rendering: crisp-edges;
+            image-rendering: auto;
         }
 
         /* sidebar */
@@ -370,6 +374,13 @@
     </main>
 
     <script>
+        // performance settings - adjust if still laggy:
+        // - lower PLAYBACK_SPEED (try 0.2 or 0.15)
+        // - lower TARGET_FPS (try 10 or 12)
+        // - in css, change scale(2) to scale(3) or scale(4) and reduce width/height proportionally
+        const PLAYBACK_SPEED = 0.3;  // 0.1-1.0 (lower = slower = less lag)
+        const TARGET_FPS = 15;        // 10-30 (lower = less lag, choppier)
+        
         // init animation
         const animation = lottie.loadAnimation({
             container: document.getElementById('lottie-bg'),
@@ -387,9 +398,21 @@
             }
         });
 
-        // performance optimizations
-        animation.setSubframe(false);  // no sub-frame interpolation
-        animation.setSpeed(0.5);       // slightly slower playback
+        // aggressive performance optimizations
+        animation.setSubframe(false);
+        animation.setSpeed(PLAYBACK_SPEED);
+        
+        // fps limiting
+        let lastFrameTime = Date.now();
+        const minFrameDelay = 1000 / TARGET_FPS;
+        
+        animation.addEventListener('enterFrame', () => {
+            const now = Date.now();
+            if (now - lastFrameTime < minFrameDelay) {
+                return;
+            }
+            lastFrameTime = now;
+        });
 
         // loading
         animation.addEventListener('DOMLoaded', () => {
