@@ -379,14 +379,14 @@
         // - lower TARGET_FPS (try 10 or 12)
         // - in css, change scale(2) to scale(3) or scale(4) and reduce width/height proportionally
         const PLAYBACK_SPEED = 0.3;  // 0.1-1.0 (lower = slower = less lag)
-        const TARGET_FPS = 15;        // 10-30 (lower = less lag, choppier)
+        const TARGET_FPS = 12;       // 8-24 (lower = less lag, choppier)
         
         // init animation
         const animation = lottie.loadAnimation({
             container: document.getElementById('lottie-bg'),
             renderer: 'canvas',
-            loop: true,
-            autoplay: true,
+            loop: false,
+            autoplay: false,
             path: 'landingdemo-1_22-v1.json',
             rendererSettings: {
                 progressiveLoad: true,
@@ -402,21 +402,42 @@
         animation.setSubframe(false);
         animation.setSpeed(PLAYBACK_SPEED);
         
-        // fps limiting
-        let lastFrameTime = Date.now();
+        // manual frame limiter (avoids Lottie internal rAF doing full-rate renders)
+        let lastTick = 0;
+        let currentFrame = 0;
+        let rafId = null;
         const minFrameDelay = 1000 / TARGET_FPS;
-        
-        animation.addEventListener('enterFrame', () => {
-            const now = Date.now();
-            if (now - lastFrameTime < minFrameDelay) {
+        let isVisible = true;
+
+        const startManualLoop = () => {
+            if (rafId) {
                 return;
             }
-            lastFrameTime = now;
-        });
+            const baseFps = animation.frameRate || 30;
+            const tick = (ts) => {
+                if (!isVisible) {
+                    rafId = requestAnimationFrame(tick);
+                    return;
+                }
+                if (!lastTick) {
+                    lastTick = ts;
+                }
+                const delta = ts - lastTick;
+                if (delta >= minFrameDelay) {
+                    const advance = (delta / 1000) * baseFps * PLAYBACK_SPEED;
+                    currentFrame = (currentFrame + advance) % animation.totalFrames;
+                    animation.goToAndStop(currentFrame, true);
+                    lastTick = ts;
+                }
+                rafId = requestAnimationFrame(tick);
+            };
+            rafId = requestAnimationFrame(tick);
+        };
 
         // loading
         animation.addEventListener('DOMLoaded', () => {
-            console.log('animation loaded');
+            animation.goToAndStop(0, true);
+            startManualLoop();
         });
 
         animation.addEventListener('error', (e) => {
@@ -427,10 +448,17 @@
 
         // pause when hidden
         document.addEventListener('visibilitychange', () => {
+            isVisible = !document.hidden;
             if (document.hidden) {
                 animation.pause();
+                if (rafId) {
+                    cancelAnimationFrame(rafId);
+                    rafId = null;
+                }
             } else {
                 animation.play();
+                lastTick = 0;
+                startManualLoop();
             }
         });
 
