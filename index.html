@@ -44,13 +44,14 @@
             top: 0;
             left: var(--sidebar-width);
             z-index: 0;
-            /* render at 50% size for better performance */
-            width: calc((100vw - var(--sidebar-width)) * 0.5);
-            height: calc(100vh * 0.5);
-            transform: scale(2);
+            /* render at lower res for better performance */
+            width: calc((100vw - var(--sidebar-width)) * 0.35);
+            height: calc(100vh * 0.35);
+            transform: scale(3);
             transform-origin: top left;
             /* gpu acceleration */
             will-change: transform;
+            contain: layout paint size;
             /* subtle opacity helps mask lower quality */
             opacity: 0.85;
         }
@@ -376,10 +377,11 @@
     <script>
         // performance settings - adjust if still laggy:
         // - lower PLAYBACK_SPEED (try 0.2 or 0.15)
-        // - lower TARGET_FPS (try 10 or 12)
-        // - in css, change scale(2) to scale(3) or scale(4) and reduce width/height proportionally
-        const PLAYBACK_SPEED = 0.3;  // 0.1-1.0 (lower = slower = less lag)
-        const TARGET_FPS = 12;       // 8-24 (lower = less lag, choppier)
+        // - lower TARGET_FPS (try 8 or 10)
+        // - in css, change scale(3) to scale(4) and reduce width/height proportionally
+        const PLAYBACK_SPEED = 0.25; // 0.1-1.0 (lower = slower = less lag)
+        const TARGET_FPS = 10;       // 6-20 (lower = less lag, choppier)
+        const MAX_DPR = 1;           // caps canvas resolution
         
         // init animation
         const animation = lottie.loadAnimation({
@@ -391,10 +393,11 @@
             rendererSettings: {
                 progressiveLoad: true,
                 preserveAspectRatio: 'xMidYMid slice',
-                clearCanvas: false,
+                clearCanvas: true,
                 context: null,
                 hideOnTransparent: true,
-                className: 'lottie-canvas'
+                className: 'lottie-canvas',
+                dpr: MAX_DPR
             }
         });
 
@@ -437,6 +440,9 @@
         // loading
         animation.addEventListener('DOMLoaded', () => {
             animation.goToAndStop(0, true);
+            if (animation.renderer && typeof animation.renderer.setQuality === 'function') {
+                animation.renderer.setQuality('low');
+            }
             startManualLoop();
         });
 
