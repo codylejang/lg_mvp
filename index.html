@@ -377,6 +377,60 @@
     </main>
 
     <script>
+        const bgVideo = document.getElementById('bg-video');
+        if (bgVideo) {
+            const SPEED = 0.5; // half speed
+            let lastTick = 0;
+            let rafId = null;
+            let reversing = false;
+
+            const reverseTick = (now) => {
+                if (!lastTick) {
+                    lastTick = now;
+                }
+                const deltaSec = (now - lastTick) / 1000;
+                lastTick = now;
+
+                if (bgVideo.duration) {
+                    let nextTime = bgVideo.currentTime - (deltaSec * SPEED);
+                    if (nextTime <= 0) {
+                        nextTime = 0;
+                        reversing = false;
+                        bgVideo.currentTime = 0;
+                        bgVideo.play().catch(() => {});
+                        rafId = null;
+                        return;
+                    }
+                    bgVideo.currentTime = nextTime;
+                }
+
+                rafId = requestAnimationFrame(reverseTick);
+            };
+
+            const startReverse = () => {
+                if (reversing) {
+                    return;
+                }
+                reversing = true;
+                bgVideo.pause();
+                lastTick = 0;
+                rafId = requestAnimationFrame(reverseTick);
+            };
+
+            const startForward = () => {
+                bgVideo.loop = false;
+                bgVideo.defaultPlaybackRate = SPEED;
+                bgVideo.playbackRate = SPEED;
+                bgVideo.play().catch(() => {});
+            };
+
+            bgVideo.addEventListener('ended', startReverse);
+            bgVideo.addEventListener('loadedmetadata', startForward, { once: true });
+            if (bgVideo.readyState >= 1) {
+                startForward();
+            }
+        }
+
         // nav clicks
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', function() {
